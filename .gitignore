@@ -14,5 +14,6 @@ pytest-cache-files-*/
 .env.*
 !.env.example
 .superpowers/
+.overmind-sync/
 test-results/
 playwright-report/
