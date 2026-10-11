@@ -1,0 +1,86 @@
+import io
+import json
+import os
+from pathlib import Path
+
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.staticfiles import StaticFiles
+from PIL import Image, ImageOps, UnidentifiedImageError
+
+from backend.inference import Predictor
+from backend.library import CLASSES, class_info
+
+ROOT = Path(__file__).resolve().parents[1]
+MAX_BYTES = 10*1024*1024
+Image.MAX_IMAGE_PIXELS = 20_000_000
+
+
+def create_app(artifacts=None):
+    artifacts = Path(artifacts or os.getenv('LEAFLENS_ARTIFACTS', ROOT / 'artifacts'))
+    predictor = Predictor(artifacts)
+    app = FastAPI(title='LeafLens', version='1.0.0', description='Crop leaf disease research API')
+
+    @app.get('/api/health')
+    def health():
+        path = predictor.checkpoint_path()
+        training = [p.parent.name for p in artifacts.glob('*/run-status.json') if json.loads(p.read_text()).get('state') == 'training']
+        failed = [p.parent.name for p in artifacts.glob('*/run-status.json') if json.loads(p.read_text()).get('state') == 'failed']
+        return {'status': 'ok', 'model_ready': predictor.ready(), 'architecture': path.parent.name if path else None,
+                'available_models': [a for a in ['vgg16', 'cnn'] if predictor.ready(a)],
+                'device': predictor.device, 'max_upload_mb': 10, 'training': training, 'failed_runs': failed}
+
+    @app.get('/api/library')
+    def library():
+        return {'classes': [class_info(label) for label in CLASSES], 'dataset': 'emmarex/plantdisease',
+                'notice': 'General observations only. Seek expert confirmation before treatment.'}
+
+    @app.get('/api/metrics')
+    def metrics():
+        experiments = []
+        for architecture in ['cnn', 'vgg16']:
+            status = artifacts / architecture / 'run-status.json'
+            if status.exists() and json.loads(status.read_text()).get('state') != 'complete':
+                continue  # A new checkpoint must not be paired with an old evaluation.
+            path = artifacts / architecture / 'metrics.json'
+            if not path.exists() and artifacts.resolve() == (ROOT / 'artifacts').resolve():
+                path = ROOT / 'docs/results' / f'{architecture}.json'
+            if path.exists():
+                experiments.append(json.loads(path.read_text()))
+        return {'experiments': experiments}
+
+    @app.post('/api/predict')
+    def predict(file: UploadFile = File(...), architecture: str | None = Form(None)):
+        if architecture is not None and architecture not in {'cnn', 'vgg16'}:
+            raise HTTPException(422, 'Choose cnn or vgg16 as the analysis model.')
+        raw = file.file.read(MAX_BYTES+1)
+        if len(raw) > MAX_BYTES:
+            raise HTTPException(413, 'Photo exceeds 10 MB. Choose a smaller image.')
+        try:
+            with Image.open(io.BytesIO(raw)) as source:
+                if source.format not in {'JPEG', 'PNG', 'WEBP'}:
+                    raise ValueError('Unsupported image format')
+                if source.width*source.height > 20_000_000:
+                    raise ValueError('Image exceeds 20 megapixels')
+                image = ImageOps.exif_transpose(source).convert('RGB')
+                image.load()
+        except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError, Image.DecompressionBombWarning):
+            raise HTTPException(422, 'Choose a valid JPEG, PNG or WebP photo under 20 megapixels.')
+        if not predictor.ready(architecture):
+            raise HTTPException(503, 'No trained model is installed. Run the training pipeline, then try again.')
+        try:
+            return predictor.predict(image, architecture)
+        except (RuntimeError, KeyError, ValueError) as exc:
+            import logging
+            logging.getLogger(__name__).exception('Model inference failed')
+            raise HTTPException(503, 'Model could not be loaded. Check its checkpoint and retrain if necessary.') from exc
+
+    samples = ROOT / 'frontend' / 'public' / 'samples'
+    if samples.exists():
+        app.mount('/samples', StaticFiles(directory=samples), name='samples')
+    dist = ROOT / 'frontend' / 'dist'
+    if dist.exists():
+        app.mount('/', StaticFiles(directory=dist, html=True), name='frontend')
+    return app
+
+
+app = create_app()

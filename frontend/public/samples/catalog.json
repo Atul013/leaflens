@@ -1,0 +1,38 @@
+[
+  {
+    "url": "/samples/specimen-1.jpg",
+    "name": "Early blight",
+    "crop": "Tomato",
+    "label": "Tomato___Early_blight",
+    "partition": "test",
+    "source_path": "Tomato___Early_blight/65e02ee3-6760-4416-b1a5-9556bea43d0b___RS_Erly.B 7772.JPG",
+    "sha256_decoded_pixels": "a86238f76a200627629dda54ba14bb63ce02c8247b8cfa95a4fc9e4322e2822d"
+  },
+  {
+    "url": "/samples/specimen-2.jpg",
+    "name": "Healthy",
+    "crop": "Tomato",
+    "label": "Tomato___healthy",
+    "partition": "test",
+    "source_path": "Tomato___healthy/2b14b93f-0664-4b7f-93fa-b7d3df03dc06___GH_HL Leaf 508.1.JPG",
+    "sha256_decoded_pixels": "e0c6353dc86d71579171a03592b71e0b124331af10ed54a49af6f59583708203"
+  },
+  {
+    "url": "/samples/specimen-3.jpg",
+    "name": "Late blight",
+    "crop": "Potato",
+    "label": "Potato___Late_blight",
+    "partition": "test",
+    "source_path": "Potato___Late_blight/74d51dd6-7990-4d3a-95c6-5d67fac5cdad___RS_LB 2578.JPG",
+    "sha256_decoded_pixels": "7c75599f46021dcfcc6be556f402f98f8249d34673eb5270c203e026b984dc20"
+  },
+  {
+    "url": "/samples/specimen-4.jpg",
+    "name": "Bacterial spot",
+    "crop": "Bell pepper",
+    "label": "Pepper__bell___Bacterial_spot",
+    "partition": "test",
+    "source_path": "Pepper__bell___Bacterial_spot/7a901ea0-0ebe-41fa-9585-f74f6ce49d17___JR_B.Spot 8859.JPG",
+    "sha256_decoded_pixels": "7a7a05ef6f603f8d64ad6b75aad846d6dfa344c211b406de0c124bdaaa5d308f"
+  }
+]
