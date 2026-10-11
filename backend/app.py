@@ -15,8 +15,10 @@ MAX_BYTES = 10*1024*1024
 Image.MAX_IMAGE_PIXELS = 20_000_000
 
 
-def create_app(artifacts=None):
+def create_app(artifacts=None, max_upload_mb=None):
     artifacts = Path(artifacts or os.getenv('LEAFLENS_ARTIFACTS', ROOT / 'artifacts'))
+    upload_mb = max_upload_mb or int(os.getenv('LEAFLENS_MAX_UPLOAD_MB', '10'))
+    max_bytes = upload_mb * 1024 * 1024
     predictor = Predictor(artifacts)
     app = FastAPI(title='LeafLens', version='1.0.0', description='Crop leaf disease research API')
 
@@ -27,7 +29,7 @@ def create_app(artifacts=None):
         failed = [p.parent.name for p in artifacts.glob('*/run-status.json') if json.loads(p.read_text()).get('state') == 'failed']
         return {'status': 'ok', 'model_ready': predictor.ready(), 'architecture': path.parent.name if path else None,
                 'available_models': [a for a in ['vgg16', 'cnn'] if predictor.ready(a)],
-                'device': predictor.device, 'max_upload_mb': 10, 'training': training, 'failed_runs': failed}
+                'device': predictor.device, 'max_upload_mb': upload_mb, 'training': training, 'failed_runs': failed}
 
     @app.get('/api/library')
     def library():
@@ -52,9 +54,9 @@ def create_app(artifacts=None):
     def predict(file: UploadFile = File(...), architecture: str | None = Form(None)):
         if architecture is not None and architecture not in {'cnn', 'vgg16'}:
             raise HTTPException(422, 'Choose cnn or vgg16 as the analysis model.')
-        raw = file.file.read(MAX_BYTES+1)
-        if len(raw) > MAX_BYTES:
-            raise HTTPException(413, 'Photo exceeds 10 MB. Choose a smaller image.')
+        raw = file.file.read(max_bytes+1)
+        if len(raw) > max_bytes:
+            raise HTTPException(413, f'Photo exceeds {upload_mb} MB. Choose a smaller image.')
         try:
             with Image.open(io.BytesIO(raw)) as source:
                 if source.format not in {'JPEG', 'PNG', 'WEBP'}:

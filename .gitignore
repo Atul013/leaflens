@@ -15,5 +15,7 @@ pytest-cache-files-*/
 !.env.example
 .superpowers/
 .overmind-sync/
+.vercel/
+.vercel-deploy/
 test-results/
 playwright-report/

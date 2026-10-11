@@ -10,6 +10,20 @@ from PIL import Image
 from backend.library import class_info
 
 
+def encode_heatmap(heat, image_size):
+    """Bound responses while preserving photo aspect ratio for overlay alignment."""
+    rgba = np.zeros((*heat.shape, 4), dtype=np.uint8)
+    rgba[:, :, 0] = 255
+    rgba[:, :, 1] = (180*(1-heat)).astype(np.uint8)
+    rgba[:, :, 2] = 30
+    rgba[:, :, 3] = (heat*190).astype(np.uint8)
+    scale = min(1., 768 / max(image_size))
+    size = tuple(max(1, round(edge*scale)) for edge in image_size)
+    buffer = io.BytesIO()
+    Image.fromarray(rgba).resize(size, Image.Resampling.BILINEAR).save(buffer, format='PNG')
+    return 'data:image/png;base64,' + base64.b64encode(buffer.getvalue()).decode()
+
+
 class Predictor:
     def __init__(self, artifacts):
         self.artifacts = artifacts
@@ -51,17 +65,11 @@ class Predictor:
             top = int(probabilities.argmax())
             heat = gradcam(self.model, tensor, top)
             # Transparent orange attention map, blended by the UI over the original image.
-            rgba = np.zeros((*heat.shape, 4), dtype=np.uint8)
-            rgba[:, :, 0] = 255
-            rgba[:, :, 1] = (180*(1-heat)).astype(np.uint8)
-            rgba[:, :, 2] = 30
-            rgba[:, :, 3] = (heat*190).astype(np.uint8)
-            buffer = io.BytesIO()
-            Image.fromarray(rgba).resize(image.size, Image.Resampling.BILINEAR).save(buffer, format='PNG')
+            encoded_heatmap = encode_heatmap(heat, image.size)
             ranked = sorted(enumerate(probabilities.tolist()), key=lambda row: row[1], reverse=True)
             predictions = [{**class_info(self.checkpoint['classes'][i]), 'probability': probability} for i, probability in ranked[:5]]
             confidence = float(probabilities[top])
-            return {'predictions': predictions, 'heatmap': 'data:image/png;base64,'+base64.b64encode(buffer.getvalue()).decode(),
+            return {'predictions': predictions, 'heatmap': encoded_heatmap,
                     'architecture': self.checkpoint['architecture'], 'confidence': confidence,
                     'uncertain': confidence < .7, 'threshold': .7,
                     'elapsed_ms': round((time.perf_counter()-started)*1000), 'created_at': datetime.now(timezone.utc).isoformat(),

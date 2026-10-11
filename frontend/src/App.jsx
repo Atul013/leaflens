@@ -87,6 +87,7 @@ function App() {
     [selectedDisease, setSelectedDisease] = useState(null),
     [modelIndex, setModelIndex] = useState(0),
     [modelChoice, setModelChoice] = useState('vgg16');
+  const uploadLimit = health?.max_upload_mb ?? 10;
   const input = useRef(),
     camera = useRef(),
     activeUrl = useRef(),
@@ -149,8 +150,8 @@ function App() {
       setError('Choose a JPEG, PNG or WebP image.');
       return;
     }
-    if (next.size > 10 * 1024 * 1024) {
-      setError('This photo exceeds 10 MB. Choose a smaller image.');
+    if (next.size > uploadLimit * 1024 * 1024) {
+      setError(`This photo exceeds ${uploadLimit} MB. Choose a smaller image.`);
       return;
     }
     setResult(null);
@@ -476,7 +477,7 @@ function App() {
                   <div className="upload-footer">
                     <div>
                       <strong>One leaf. Natural light. Clear details.</strong>
-                      <span>JPEG, PNG or WebP · Up to 10 MB</span>
+                      <span>JPEG, PNG or WebP · Up to {uploadLimit} MB</span>
                     </div>
                     <button
                       className="icon-button camera-button"
@@ -1070,6 +1071,14 @@ function App() {
         <footer className="footer">
           <span>
             <Leaf size={14} /> LeafLens
+            <a
+              className="sources-link"
+              href="/sources.txt"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Sources
+            </a>
           </span>
           <span>Better observations. Thoughtful decisions.</span>
           <span>Course project · 2026</span>

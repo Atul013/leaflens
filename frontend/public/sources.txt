@@ -1,0 +1,31 @@
+LeafLens research and asset sources
+
+Project team:
+Atul Biju - ASI23CA023
+Athul M B - ASI23CA022
+Athul Chandran - ASI23CA021
+
+PlantVillage sample photographs and dataset:
+Sharada P. Mohanty, David P. Hughes and Marcel Salathe.
+Using Deep Learning for Image-Based Plant Disease Detection (2016).
+https://doi.org/10.3389/fpls.2016.01419
+https://github.com/spMohanty/PlantVillage-Dataset
+The original authors' model card declares CC BY-SA 3.0:
+https://creativecommons.org/licenses/by-sa/3.0/
+Photograph pixels are unchanged. The gallery uses four held-out specimens.
+
+Introductory decorative photograph:
+https://images.unsplash.com/photo-1501004318641-b39e6451bec6
+https://unsplash.com/license
+The decorative image is not a model input or training specimen.
+
+VGG16: Simonyan and Zisserman, Very Deep Convolutional Networks (2014).
+https://arxiv.org/abs/1409.1556
+Grad-CAM: Selvaraju et al., Visual Explanations from Deep Networks (2016).
+https://arxiv.org/abs/1610.02391
+
+Fonts: DM Sans and Manrope, SIL Open Font License.
+Icons: Lucide, ISC license.
+
+This is a research course demonstration, not a confirmed diagnosis.
+Field accuracy, confidence calibration and unknown-disease detection are unverified.
