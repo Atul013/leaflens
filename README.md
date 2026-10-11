@@ -2,6 +2,8 @@
 
 **A closer look. A healthier harvest.**
 
+**Live app:** [leaflens-black.vercel.app](https://leaflens-black.vercel.app)
+
 A crop leaf disease research application with a botanical UI, a custom CNN baseline, VGG16 transfer learning, Grad-CAM explanations, measured evaluation and local field notes.
 
 | Team | Registration |
@@ -65,6 +67,10 @@ The upstream subset is **not** reported as a full Kaggle benchmark. Exact source
 - Grad-CAM overlays, ranked alternatives and a transparent low-confidence review threshold.
 - Responsive UI, atlas search, local history, JSON export, keyboard controls and recoverable errors.
 - Report, presentation, viva notes, API tests, browser tests, CI and Docker support.
+
+## Hosting on Vercel
+
+The complete application, including both trained models, runs on Vercel. The hosted upload limit is **4 MB**; local execution defaults to 10 MB. Deployment uses a curated CPU-only package and Vercel's large-function support. See [deployment instructions](docs/DEPLOYMENT.md) for setup, preview checks, production promotion and rollback.
 
 ## Development and checks
 

@@ -40,7 +40,10 @@ def main():
         target.mkdir(parents=True, exist_ok=True)
         for filename in ['best.pt', 'metrics.json']:
             shutil.copy2(ROOT / 'artifacts' / architecture / filename, target / filename)
-    shutil.copy2(ROOT / 'requirements-deploy.txt', output / 'requirements.txt')
+    # Keep PyTorch's mirror package-specific: a global extra-index causes uv
+    # to look for unrelated NumPy/Pillow versions on the PyTorch mirror first.
+    shutil.copy2(ROOT / 'pyproject-deploy.toml', output / 'pyproject.toml')
+    (output / 'requirements.txt').unlink(missing_ok=True)
     (output / 'app.py').write_text('from backend.app import app\n', encoding='utf-8')
     (output / '.python-version').write_text('3.12\n', encoding='utf-8')
     (output / '.vercelignore').write_text('.vercel\n.env*\n.git*\n__pycache__\n*.pyc\n', encoding='utf-8')

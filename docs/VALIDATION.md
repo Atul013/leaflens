@@ -1,5 +1,17 @@
 # Validation receipt — 11 October 2026
 
+## Vercel delivery
+
+- Live app: https://leaflens-black.vercel.app . Verified production ID: `dpl_bFB9ESpfU41pjXSNCFwucVa6W5G4`.
+- Anonymous homepage, health and source-attribution requests return 200. Health reports `model_ready: true`, both `vgg16` and `cnn`, CPU inference and a 4 MB upload limit.
+- A 4 MB + 1 byte multipart photo is rejected by the application with 413 and the correct 4 MB message, below the platform's 4.5 MB request ceiling.
+- Hosted real VGG16 and CNN predictions/Grad-CAM succeeded; attention maps preserve photo aspect ratio and are bounded to a 768-pixel longest edge.
+- Final Python suite: **20 passed**. Browser suite: **7 passed** — six application browser tests target public production (including both real trained models); one separately checks the local 12-slide presentation artifact.
+- Bundled checkpoint and `.env.local` URLs return 404; deployment inspection confirms credentials and the training dataset are not uploaded as app files.
+- GitHub's About Website field is `https://leaflens-black.vercel.app`. Deployment is CLI-driven; automatic Git deployments are not configured. See `DEPLOYMENT.md` for persistent environment settings and update/rollback commands.
+
+The project uses the existing Vercel Hobby scope. Python runtime dependencies and checkpoints form an approximately 858 MB uncompressed bundle, deployed through Vercel's large-function beta. No separate inference host or third-party model API is used.
+
 ## Verified locally
 
 - Python suite: **18 passed**. Covers decoded-image split isolation, deterministic class coverage, empty/small/conflicting datasets, legacy Kaggle labels, source-selection consistency, upload bounds, absent/selected models, checkpoint inference, non-square heatmap alignment, evaluation arithmetic, calibration arithmetic and frozen-backbone Grad-CAM.

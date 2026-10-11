@@ -1,0 +1,28 @@
+[project]
+name = "leaflens-runtime"
+version = "1.0.0"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "torch==2.11.0+cpu",
+  "torchvision==0.26.0+cpu",
+  "fastapi==0.143.0",
+  "python-multipart==0.0.32",
+  "pillow==12.3.0",
+  "numpy==2.5.4",
+  "uvicorn==0.54.0",
+]
+
+[tool.uv]
+environments = ["sys_platform == 'linux' and platform_machine == 'x86_64'"]
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+torchvision = { index = "pytorch-cpu" }
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.vercel]
+entrypoint = "app:app"

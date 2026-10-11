@@ -650,8 +650,8 @@ function App() {
                         {!busy && <ArrowUpRight size={19} />}
                       </button>
                       <span className="local-note">
-                        <ShieldCheck size={14} /> Photos are processed locally
-                        by this service.
+                        <ShieldCheck size={14} /> Original photos are not
+                        retained by this service.
                       </span>
                     </div>
                   )}

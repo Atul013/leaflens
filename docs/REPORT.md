@@ -72,7 +72,7 @@ Grad-CAM uses the gradient of the predicted class with respect to the final conv
 
 React/Vite provides four views: Diagnose, Disease atlas, Model lab and Field notes. FastAPI validates uploaded JPEG/PNG/WebP photos (10 MB maximum, 20 megapixels maximum), loads checkpoints and produces ranked predictions with attention overlays. Image orientation is corrected before inference. Model inference is serialized to avoid overlapping gradient hooks. A missing or incompatible checkpoint yields a recoverable error rather than an invented result.
 
-The field-station design uses forest green, pale botanical accents, deliberate typography and a photographic leaf panel. The interface supports keyboard navigation, dialog focus trapping, reduced motion and mobile layouts. Field notes store up to 20 small thumbnails and results in local browser storage; uploaded originals are not persisted by the API. No cloud photo service is used by the application.
+The field-station design uses forest green, pale botanical accents, deliberate typography and a photographic leaf panel. The interface supports keyboard navigation, dialog focus trapping, reduced motion and mobile layouts. Field notes store up to 20 small thumbnails and results in local browser storage; uploaded originals are not persisted by the API. No external image-analysis API is used. Inference runs in the application's Python service, locally or on Vercel.
 
 ## 7. Social relevance and limitations
 
