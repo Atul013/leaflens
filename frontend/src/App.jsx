@@ -1,25 +1,21 @@
 import React, { useEffect, useRef, useState } from 'react';
+import DiagnosisWorkspace from './DiagnosisWorkspace.jsx';
 import {
   ArrowUpRight,
-  Upload,
   Leaf,
   ScanLine,
   BookOpen,
   FlaskConical,
   History,
   ChevronRight,
-  Check,
   X,
-  Camera,
   Download,
   RefreshCw,
   AlertCircle,
   Sprout,
-  Layers,
   ShieldCheck,
   Trash2,
   Search,
-  ImagePlus,
   ArrowRight,
   CircleHelp,
   Menu,
@@ -74,27 +70,12 @@ function App() {
     [samples, setSamples] = useState([]),
     [history, setHistory] = useState(readHistory),
     [menu, setMenu] = useState(false);
-  const [file, setFile] = useState(null),
-    [preview, setPreview] = useState(null),
-    [result, setResult] = useState(null),
-    [busy, setBusy] = useState(false),
-    [error, setError] = useState(''),
-    [showHeat, setShowHeat] = useState(false),
-    [drag, setDrag] = useState(false),
-    [sampleName, setSampleName] = useState(''),
+  const [error, setError] = useState(''),
     [query, setQuery] = useState(''),
     [crop, setCrop] = useState('All crops'),
     [selectedDisease, setSelectedDisease] = useState(null),
-    [modelIndex, setModelIndex] = useState(0),
-    [modelChoice, setModelChoice] = useState('vgg16');
-  const uploadLimit = health?.max_upload_mb ?? 10;
-  const input = useRef(),
-    camera = useRef(),
-    activeUrl = useRef(),
-    resultRef = useRef(),
-    requestId = useRef(0),
-    busyRef = useRef(false),
-    historyRef = useRef(history);
+    [modelIndex, setModelIndex] = useState(0);
+  const historyRef = useRef(history);
   function updateNotes(updater) {
     const next = updater(historyRef.current);
     historyRef.current = next;
@@ -112,11 +93,6 @@ function App() {
       .then((v) => {
         setHealth(v);
         setOffline(false);
-        setModelChoice((previous) =>
-          v.available_models?.includes(previous)
-            ? previous
-            : v.architecture || previous,
-        );
       })
       .catch(() => {
         setHealth(null);
@@ -138,111 +114,9 @@ function App() {
     const timer = setInterval(refresh, 30000);
     return () => {
       clearInterval(timer);
-      if (activeUrl.current) URL.revokeObjectURL(activeUrl.current);
     };
   }, []);
-  function selectFile(next, name = '') {
-    if (busyRef.current) return;
-    requestId.current++;
-    setError('');
-    if (!next) return;
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(next.type)) {
-      setError('Choose a JPEG, PNG or WebP image.');
-      return;
-    }
-    if (next.size > uploadLimit * 1024 * 1024) {
-      setError(`This photo exceeds ${uploadLimit} MB. Choose a smaller image.`);
-      return;
-    }
-    setResult(null);
-    setShowHeat(false);
-    if (activeUrl.current) URL.revokeObjectURL(activeUrl.current);
-    const url = URL.createObjectURL(next);
-    activeUrl.current = url;
-    setPreview(url);
-    setFile(next);
-    setSampleName(name);
-    if (input.current) input.current.value = '';
-  }
-  async function chooseSample(sample) {
-    if (busyRef.current) return;
-    const id = ++requestId.current;
-    try {
-      const response = await fetch(sample.url);
-      if (!response.ok) throw new Error('Sample could not be loaded.');
-      const blob = await response.blob();
-      if (id !== requestId.current) return;
-      selectFile(
-        new File([blob], sample.url.split('/').pop(), { type: blob.type }),
-        sample.name,
-      );
-    } catch (e) {
-      setError(e.message);
-    }
-  }
-  async function analyze() {
-    if (!file || busyRef.current) return;
-    const id = ++requestId.current;
-    busyRef.current = true;
-    setBusy(true);
-    setError('');
-    setResult(null);
-    const controller = new AbortController(),
-      timer = setTimeout(() => controller.abort(), 90000);
-    try {
-      const body = new FormData();
-      body.append('file', file);
-      body.append('architecture', modelChoice);
-      const data = await api('/api/predict', {
-        method: 'POST',
-        body,
-        signal: controller.signal,
-      });
-      if (id !== requestId.current) return;
-      setResult(data);
-      setShowHeat(false);
-      const thumbnail = await createThumbnail(file);
-      const { heatmap, ...summary } = data;
-      const entry = {
-        ...summary,
-        id: crypto.randomUUID(),
-        thumbnail,
-        fileName: file.name,
-      };
-      updateNotes((previous) => [entry, ...previous].slice(0, 20));
-      setTimeout(
-        () =>
-          resultRef.current?.scrollIntoView({
-            behavior: matchMedia('(prefers-reduced-motion: reduce)').matches
-              ? 'instant'
-              : 'smooth',
-            block: 'nearest',
-          }),
-        100,
-      );
-    } catch (e) {
-      setError(
-        e.name === 'AbortError'
-          ? 'Analysis timed out. Try a smaller photo or restart the service.'
-          : e.message,
-      );
-    } finally {
-      clearTimeout(timer);
-      busyRef.current = false;
-      setBusy(false);
-    }
-  }
-  function reset() {
-    if (busyRef.current) return;
-    requestId.current++;
-    setFile(null);
-    setPreview(null);
-    setResult(null);
-    setError('');
-    setSampleName('');
-    setShowHeat(false);
-  }
-  function exportResult(data = result) {
+  function exportResult(data) {
     const blob = new Blob(
       [JSON.stringify({ ...data, team: TEAM, project: 'LeafLens' }, null, 2)],
       { type: 'application/json' },
@@ -342,7 +216,7 @@ function App() {
           </button>
         </header>
         <main id="main">
-          {page !== 'diagnose' && error && (
+          {error && (
             <div className="error-message" role="alert">
               <AlertCircle size={18} />
               <span>{error}</span>
@@ -351,374 +225,65 @@ function App() {
               </button>
             </div>
           )}
-          {page === 'diagnose' && (
-            <>
-              <section className="intro">
-                <div>
-                  <div className="intro-kicker">
-                    <span className="tiny-line" /> Grow with a little more
-                    clarity
-                  </div>
-                  <h1>
-                    A closer look.
-                    <br />A healthier harvest.
-                  </h1>
-                  <p>
-                    Turn a leaf photograph into a clearer picture of crop
-                    health.
-                    <br className="desktop-break" /> Observe, understand, and
-                    know what to check next.
-                  </p>
+          <div hidden={page !== 'diagnose'}>
+            <section className="intro">
+              <div>
+                <div className="intro-kicker">
+                  <span className="tiny-line" /> Grow with a little more clarity
                 </div>
-                <div className="intro-stamp">
-                  <Leaf size={35} strokeWidth={1} />
-                  <span>
-                    Rooted in research.
-                    <br />
-                    Built for the field.
-                  </span>
-                </div>
-              </section>
-              <section
-                className="diagnostic-grid"
-                aria-label="Leaf diagnosis workspace"
-              >
-                <div className="specimen-panel">
-                  <div className="panel-top">
-                    <span>
-                      <ScanLine size={16} /> Leaf specimen
-                    </span>
-                    <span className="subtle">
-                      {file ? 'Ready to inspect' : 'Start with one leaf'}
-                    </span>
-                  </div>
-                  <div
-                    className={`specimen ${preview ? 'has-photo' : ''} ${drag ? 'dragging' : ''}`}
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      setDrag(true);
-                    }}
-                    onDragLeave={() => setDrag(false)}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      setDrag(false);
-                      selectFile(e.dataTransfer.files[0]);
-                    }}
-                  >
-                    {preview ? (
-                      <img
-                        className="specimen-image"
-                        src={preview}
-                        alt="Selected crop leaf for analysis"
-                      />
-                    ) : (
-                      <div className="specimen-art">
-                        <img
-                          src="/botanical.jpg"
-                          alt="Green foliage photographed in natural light"
-                        />
-                        <div className="photo-shade" />
-                        <div className="photo-label">
-                          <span className="photo-dot" /> A little attention goes
-                          a long way.
-                        </div>
-                      </div>
-                    )}
-                    {preview && showHeat && result && (
-                      <img
-                        className="heat-overlay"
-                        src={result.heatmap}
-                        alt="Grad-CAM model attention overlay"
-                      />
-                    )}
-                    <div className="scan-corners" aria-hidden="true">
-                      <i />
-                      <i />
-                      <i />
-                      <i />
-                    </div>
-                    {busy && (
-                      <div className="scanning">
-                        <div className="scan-sweep" />
-                        <span>
-                          <span className="spinner" />
-                          Reading leaf patterns…
-                        </span>
-                      </div>
-                    )}
-                    {!preview && (
-                      <button
-                        className="photo-upload"
-                        onClick={() => input.current.click()}
-                      >
-                        <ImagePlus size={18} /> Add your leaf photo
-                      </button>
-                    )}
-                    {preview && (
-                      <div className="image-tools">
-                        <span>{sampleName || file.name}</span>
-                        <button
-                          disabled={busy}
-                          onClick={() => input.current.click()}
-                          aria-label="Replace leaf photo"
-                        >
-                          <RefreshCw size={16} />
-                        </button>
-                        <button
-                          disabled={busy}
-                          onClick={reset}
-                          aria-label="Remove leaf photo"
-                        >
-                          <X size={18} />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                  <div className="upload-footer">
-                    <div>
-                      <strong>One leaf. Natural light. Clear details.</strong>
-                      <span>JPEG, PNG or WebP · Up to {uploadLimit} MB</span>
-                    </div>
-                    <button
-                      className="icon-button camera-button"
-                      onClick={() => camera.current.click()}
-                      disabled={busy}
-                      aria-label="Take a leaf photo"
-                    >
-                      <Camera size={20} />
-                    </button>
-                  </div>
-                  <input
-                    ref={input}
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    className="visually-hidden"
-                    onChange={(e) => selectFile(e.target.files[0])}
-                    aria-label="Upload leaf photo"
-                    disabled={busy}
-                  />
-                  <input
-                    ref={camera}
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                    className="visually-hidden"
-                    onChange={(e) => selectFile(e.target.files[0])}
-                    aria-label="Capture leaf photo"
-                    disabled={busy}
-                  />
-                </div>
-                <div className="analysis-panel" ref={resultRef}>
-                  <div className="panel-top">
-                    <span>
-                      <Layers size={16} /> The leaf's story
-                    </span>
-                    <span className="subtle">
-                      {result ? 'Analysis complete' : 'Visual analysis'}
-                    </span>
-                  </div>
-                  <label className="model-choice">
-                    <span>Analysis model</span>
-                    <select
-                      aria-label="Analysis model"
-                      value={modelChoice}
-                      disabled={busy}
-                      onChange={(e) => {
-                        setModelChoice(e.target.value);
-                        setResult(null);
-                        setShowHeat(false);
-                      }}
-                    >
-                      <option value="vgg16">VGG16 transfer learning</option>
-                      <option value="cnn">Custom CNN baseline</option>
-                    </select>
-                  </label>
-                  {result ? (
-                    <div className="results" aria-live="polite">
-                      <div
-                        className={`result-tag ${result.uncertain ? 'caution' : ''}`}
-                      >
-                        <span />
-                        {result.uncertain
-                          ? 'Needs a closer look'
-                          : result.predictions[0].healthy
-                            ? 'Healthy pattern detected'
-                            : 'Disease pattern detected'}
-                      </div>
-                      <span className="result-crop">
-                        {result.predictions[0].crop}
-                      </span>
-                      <h2>{result.predictions[0].condition}</h2>
-                      <p>{result.predictions[0].symptoms}</p>
-                      <div className="confidence">
-                        <span>
-                          Model confidence <CircleHelp size={13} />
-                        </span>
-                        <strong>{pct(result.confidence)}</strong>
-                      </div>
-                      <div className="confidence-track">
-                        <span style={{ width: pct(result.confidence) }} />
-                      </div>
-                      <p className="confidence-note">
-                        An uncalibrated probability, not a certainty.
-                      </p>
-                      <div className="alternative-heading">
-                        Other possible patterns
-                      </div>
-                      {result.predictions.slice(1, 4).map((p) => (
-                        <div className="alternative" key={p.id}>
-                          <span>
-                            {p.crop} · {p.condition}
-                          </span>
-                          <strong>{pct(p.probability)}</strong>
-                        </div>
-                      ))}
-                      <label className="heat-switch">
-                        <span>
-                          <ScanLine size={18} /> Show model attention{' '}
-                          <small>Grad-CAM</small>
-                        </span>
-                        <input
-                          type="checkbox"
-                          checked={showHeat}
-                          onChange={(e) => setShowHeat(e.target.checked)}
-                        />
-                        <i aria-hidden="true" />
-                      </label>
-                      <div className="result-actions">
-                        <button
-                          className="secondary-button"
-                          onClick={() => exportResult()}
-                        >
-                          <Download size={16} /> Save analysis
-                        </button>
-                        <button
-                          className="text-button"
-                          onClick={() =>
-                            setSelectedDisease(result.predictions[0])
-                          }
-                        >
-                          What to check <ArrowRight size={15} />
-                        </button>
-                      </div>
-                      <p className="inference-meta">
-                        {result.architecture.toUpperCase()} ·{' '}
-                        {(result.elapsed_ms / 1000).toFixed(2)} seconds ·
-                        Research prediction
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="analysis-empty">
-                      <div className="empty-icon">
-                        <Sprout size={32} strokeWidth={1.4} />
-                      </div>
-                      <h2>
-                        {busy
-                          ? 'Looking beneath the surface.'
-                          : 'Every leaf tells a story.'}
-                      </h2>
-                      <p>
-                        {busy
-                          ? 'The model is comparing visual patterns and creating an attention map.'
-                          : 'Add a clear leaf photo to explore possible disease patterns, confidence, and the details that matter.'}
-                      </p>
-                      <div className="analysis-steps">
-                        <div>
-                          <Check size={16} />
-                          <span>Crop & disease classification</span>
-                        </div>
-                        <div>
-                          <Check size={16} />
-                          <span>Confidence & alternative matches</span>
-                        </div>
-                        <div>
-                          <Check size={16} />
-                          <span>A visual explanation with Grad-CAM</span>
-                        </div>
-                      </div>
-                      <button
-                        className="analyze-button"
-                        onClick={file ? analyze : () => input.current.click()}
-                        disabled={busy}
-                      >
-                        <ScanLine size={19} />
-                        {busy
-                          ? 'Analyzing…'
-                          : file
-                            ? 'Analyze this leaf'
-                            : 'Upload a leaf photo'}
-                        {!busy && <ArrowUpRight size={19} />}
-                      </button>
-                      <span className="local-note">
-                        <ShieldCheck size={14} /> Original photos are not
-                        retained by this service.
-                      </span>
-                    </div>
-                  )}
-                  {error && (
-                    <div className="error-message" role="alert">
-                      <AlertCircle size={18} />
-                      <span>{error}</span>
-                      <button
-                        aria-label="Dismiss error"
-                        onClick={() => setError('')}
-                      >
-                        <X size={15} />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </section>
-              {samples.length > 0 && (
-                <section className="sample-section">
-                  <div className="section-caption">
-                    <h3>No photo on hand?</h3>
-                    <span>Try a real held-out dataset sample.</span>
-                  </div>
-                  <div className="sample-list">
-                    {samples.slice(0, 4).map((sample) => (
-                      <button
-                        className="sample"
-                        key={sample.url}
-                        disabled={busy}
-                        onClick={() => chooseSample(sample)}
-                      >
-                        <img src={sample.url} alt="" />
-                        <span>
-                          <strong>{sample.crop}</strong>
-                          <small>{sample.name}</small>
-                        </span>
-                        <ArrowUpRight size={16} />
-                      </button>
-                    ))}
-                  </div>
-                </section>
-              )}
-              <section className="research-strip">
-                <div>
-                  <FlaskConical size={22} />
-                  <span>
-                    <strong>More than a prediction</strong>
-                    <small>
-                      VGG16 transfer learning, a CNN baseline, and transparent
-                      evaluation.
-                    </small>
-                  </span>
-                </div>
-                <button onClick={() => navigate('lab')}>
-                  Explore the model lab <ArrowUpRight size={17} />
-                </button>
-              </section>
-              <div className="responsibility">
-                <ShieldCheck size={16} />
+                <h1>
+                  A closer look.
+                  <br />A healthier harvest.
+                </h1>
                 <p>
-                  A second pair of eyes, not a final diagnosis. Real field
-                  conditions differ from the training dataset. Confirm findings
-                  with an agricultural expert before treatment.
+                  Turn leaf photographs into a clearer picture of crop health.
+                  <br className="desktop-break" /> Observe, understand, and know
+                  what to check next.
                 </p>
               </div>
-            </>
-          )}
+              <div className="intro-stamp">
+                <Leaf size={35} strokeWidth={1} />
+                <span>
+                  Rooted in research.
+                  <br />
+                  Built for the field.
+                </span>
+              </div>
+            </section>
+            <DiagnosisWorkspace
+              health={health}
+              samples={samples}
+              request={api}
+              team={TEAM}
+              onSave={(entry) =>
+                updateNotes((previous) => [entry, ...previous].slice(0, 20))
+              }
+              onGuide={setSelectedDisease}
+            />
+            <section className="research-strip">
+              <div>
+                <FlaskConical size={22} />
+                <span>
+                  <strong>More than a prediction</strong>
+                  <small>
+                    VGG16 transfer learning, a CNN baseline, and transparent
+                    evaluation.
+                  </small>
+                </span>
+              </div>
+              <button onClick={() => navigate('lab')}>
+                Explore the model lab <ArrowUpRight size={17} />
+              </button>
+            </section>
+            <div className="responsibility">
+              <ShieldCheck size={16} />
+              <p>
+                A second pair of eyes, not a final diagnosis. Real field
+                conditions differ from the training dataset. Confirm findings
+                with an agricultural expert before treatment.
+              </p>
+            </div>
+          </div>
           {page === 'atlas' && (
             <>
               <PageIntro
@@ -1266,26 +831,5 @@ function DiseaseModal({ item, onClose }) {
       </div>
     </section>
   );
-}
-async function createThumbnail(file) {
-  const bitmap = await createImageBitmap(file);
-  const canvas = document.createElement('canvas');
-  canvas.width = 180;
-  canvas.height = 180;
-  const context = canvas.getContext('2d');
-  const size = Math.min(bitmap.width, bitmap.height);
-  context.drawImage(
-    bitmap,
-    (bitmap.width - size) / 2,
-    (bitmap.height - size) / 2,
-    size,
-    size,
-    0,
-    0,
-    180,
-    180,
-  );
-  bitmap.close();
-  return canvas.toDataURL('image/jpeg', 0.65);
 }
 export default App;

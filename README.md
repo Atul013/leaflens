@@ -6,6 +6,12 @@
 
 A crop leaf disease research application with a botanical UI, a custom CNN baseline, VGG16 transfer learning, Grad-CAM explanations, measured evaluation and local field notes.
 
+## Compare up to five leaf photos
+
+Choose or drop one to five JPEG, PNG or WebP photos into Diagnose. Add or remove photos before analysis, then inspect the contact sheet, progress and comparison summary. Each image gets its own ranked predictions, uncalibrated confidence, Grad-CAM overlay and observation guidance. Successful results are preserved when another image fails; retry failed photos or stop and continue a session. Changing the analysis model clears the current results for a fresh comparison. Navigation preserves the session until the page is reloaded.
+
+Download a complete batch JSON report or save individual results. Field notes keep compact per-image observations on this device. Images are sent sequentially through the existing prediction API, so the hosted **4 MB per-image** limit applies independently to every photo. Batch counts describe uploaded photographs, not disease prevalence or confirmed diagnoses.
+
 | Team | Registration |
 |---|---|
 | Atul Biju | ASI23CA023 |
