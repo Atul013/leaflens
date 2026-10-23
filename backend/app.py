@@ -15,6 +15,20 @@ MAX_BYTES = 10*1024*1024
 Image.MAX_IMAGE_PIXELS = 20_000_000
 
 
+def read_run_state(path):
+    """Return a trusted training state, or invalid for unreadable status."""
+    if not path.exists():
+        return None
+    try:
+        data = json.loads(path.read_text())
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return 'invalid'
+    if not isinstance(data, dict):
+        return 'invalid'
+    state = data.get('state')
+    return state if state in {'training', 'failed', 'complete'} else 'invalid'
+
+
 def create_app(artifacts=None, max_upload_mb=None):
     artifacts = Path(artifacts or os.getenv('LEAFLENS_ARTIFACTS', ROOT / 'artifacts'))
     upload_mb = max_upload_mb or int(os.getenv('LEAFLENS_MAX_UPLOAD_MB', '10'))
@@ -25,11 +39,18 @@ def create_app(artifacts=None, max_upload_mb=None):
     @app.get('/api/health')
     def health():
         path = predictor.checkpoint_path()
-        training = [p.parent.name for p in artifacts.glob('*/run-status.json') if json.loads(p.read_text()).get('state') == 'training']
-        failed = [p.parent.name for p in artifacts.glob('*/run-status.json') if json.loads(p.read_text()).get('state') == 'failed']
+        training = []
+        failed = []
+        invalid = []
+        for status in artifacts.glob('*/run-status.json'):
+            state = read_run_state(status)
+            target = {'training': training, 'failed': failed, 'invalid': invalid}.get(state)
+            if target is not None:
+                target.append(status.parent.name)
         return {'status': 'ok', 'model_ready': predictor.ready(), 'architecture': path.parent.name if path else None,
                 'available_models': [a for a in ['vgg16', 'cnn'] if predictor.ready(a)],
-                'device': predictor.device, 'max_upload_mb': upload_mb, 'training': training, 'failed_runs': failed}
+                'device': predictor.device, 'max_upload_mb': upload_mb, 'training': training,
+                'failed_runs': failed, 'invalid_runs': invalid}
 
     @app.get('/api/library')
     def library():
@@ -41,7 +62,7 @@ def create_app(artifacts=None, max_upload_mb=None):
         experiments = []
         for architecture in ['cnn', 'vgg16']:
             status = artifacts / architecture / 'run-status.json'
-            if status.exists() and json.loads(status.read_text()).get('state') != 'complete':
+            if read_run_state(status) not in {None, 'complete'}:
                 continue  # A new checkpoint must not be paired with an old evaluation.
             path = artifacts / architecture / 'metrics.json'
             if not path.exists() and artifacts.resolve() == (ROOT / 'artifacts').resolve():
